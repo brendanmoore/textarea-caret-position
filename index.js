@@ -40,53 +40,67 @@ var properties = [
 ];
 
 var isFirefox = !(window.mozInnerScreenX == null);
-module.exports = function (textarea, position, recalculate) {
-  // mirrored div
-  var div = document.createElement('div');
-  div.id = 'textarea-caret-position-mirror-div';
-  document.body.appendChild(div);
 
-  var style = div.style;
-  var computed = window.getComputedStyle? getComputedStyle(textarea) : textarea.currentStyle;  // currentStyle for IE < 9
+;!function(exports){
 
-  // default textarea styles
-  style.whiteSpace = 'pre-wrap';
-  style.wordWrap = 'break-word';
+  var getCaretPosition = function (textarea, position, recalculate) {
+    // mirrored div
+    var div = document.createElement('div');
+    div.id = 'textarea-caret-position-mirror-div';
+    document.body.appendChild(div);
 
-  // position off-screen
-  style.position = 'absolute';  // required to return coordinates properly
-  style.visibility = 'hidden';  // not 'display: none' because we want rendering
+    var style = div.style;
+    var computed = window.getComputedStyle? getComputedStyle(textarea) : textarea.currentStyle;  // currentStyle for IE < 9
 
-  // transfer textarea properties to the div
-  properties.forEach(function (prop) {
-    style[prop] = computed[prop];
-  });
+    // default textarea styles
+    style.whiteSpace = 'pre-wrap';
+    style.wordWrap = 'break-word';
 
-  if (isFirefox) {
-    style.width = parseInt(computed.width) - 2 + 'px'  // Firefox adds 2 pixels to the padding - https://bugzilla.mozilla.org/show_bug.cgi?id=753662
-    // Firefox lies about the overflow property for textareas: https://bugzilla.mozilla.org/show_bug.cgi?id=984275
-    if (textarea.scrollHeight > parseInt(computed.height))
-      style.overflowY = 'scroll';
-  } else {
-    style.overflow = 'hidden';  // for Chrome to not render a scrollbar; IE keeps overflowY = 'scroll'
-  }  
+    // position off-screen
+    style.position = 'absolute';  // required to return coordinates properly
+    style.visibility = 'hidden';  // not 'display: none' because we want rendering
 
-  div.textContent = textarea.value.substring(0, position);
+    // transfer textarea properties to the div
+    properties.forEach(function (prop) {
+      style[prop] = computed[prop];
+    });
 
-  var span = document.createElement('span');
-  // Wrapping must be replicated *exactly*, including when a long word gets
-  // onto the next line, with whitespace at the end of the line before (#7).
-  // The  *only* reliable way to do that is to copy the *entire* rest of the
-  // textarea's content into the <span> created at the caret position.
-  span.textContent = textarea.value.substring(position);
-  div.appendChild(span);
+    if (isFirefox) {
+      style.width = parseInt(computed.width) - 2 + 'px';  // Firefox adds 2 pixels to the padding - https://bugzilla.mozilla.org/show_bug.cgi?id=753662
+      // Firefox lies about the overflow property for textareas: https://bugzilla.mozilla.org/show_bug.cgi?id=984275
+      if (textarea.scrollHeight > parseInt(computed.height))
+        style.overflowY = 'scroll';
+    } else {
+      style.overflow = 'hidden';  // for Chrome to not render a scrollbar; IE keeps overflowY = 'scroll'
+    }
 
-  var coordinates = {
-    top: span.offsetTop + parseInt(computed['borderTopWidth']),
-    left: span.offsetLeft + parseInt(computed['borderLeftWidth'])
+    div.textContent = textarea.value.substring(0, position);
+
+    var span = document.createElement('span');
+    // Wrapping must be replicated *exactly*, including when a long word gets
+    // onto the next line, with whitespace at the end of the line before (#7).
+    // The  *only* reliable way to do that is to copy the *entire* rest of the
+    // textarea's content into the <span> created at the caret position.
+    span.textContent = textarea.value.substring(position);
+    div.appendChild(span);
+
+    var coordinates = {
+      top: span.offsetTop + parseInt(computed['borderTopWidth']),
+      left: span.offsetLeft + parseInt(computed['borderLeftWidth'])
+    };
+
+    document.body.removeChild(div);
+
+    return coordinates;
   };
 
-  document.body.removeChild(div);
 
-  return coordinates;
-}
+  if (typeof define === 'function' && define.amd) {
+    define(function() {
+      return getCaretPosition;
+    });
+  } else {
+    exports.getCaretPosition = getCaretPosition;
+  }
+
+}(typeof process !== 'undefined' && typeof process.title !== 'undefined' && typeof exports !== 'undefined' ? exports : window);
